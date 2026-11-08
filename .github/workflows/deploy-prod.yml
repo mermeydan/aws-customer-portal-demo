@@ -1,0 +1,39 @@
+name: deploy-prod
+
+on:
+  workflow_dispatch:   # run manually from the Actions tab
+
+permissions:
+  contents: read
+
+jobs:
+  # Job 1: no environment -> cannot see environment secrets
+  without-environment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Try to read the prod secret without environment
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          if [ -z "$DB_PASSWORD" ]; then
+            echo "DB_PASSWORD is NOT available (job has no environment)"
+          else
+            echo "DB_PASSWORD is available"
+          fi
+
+  # Job 2: uses environment 'prod' -> waits for approval, then gets the secret
+  deploy-prod:
+    needs: without-environment
+    runs-on: ubuntu-latest
+    environment: prod
+    steps:
+      - name: Read the prod secret inside the environment
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          if [ -z "$DB_PASSWORD" ]; then
+            echo "DB_PASSWORD is NOT available"
+          else
+            echo "DB_PASSWORD is available (GitHub masks the value: $DB_PASSWORD)"
+          fi
+          echo "Target: ${{ vars.TARGET }}"
