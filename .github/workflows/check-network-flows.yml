@@ -1,0 +1,40 @@
+name: check-network-flows
+
+on:
+  workflow_dispatch:   # run manually from the Actions tab
+
+permissions:
+  contents: read
+
+jobs:
+  read-registry:
+    runs-on: ubuntu-latest
+    steps:
+      # 1) Default GITHUB_TOKEN only works for this repo (aws-customer-portal-demo) -> expected to fail
+      - name: Read flow-registry with GITHUB_TOKEN (expected to fail)
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: mermeydan/aws-flow-registry-demo
+          path: registry-default
+
+      # 2) Act as the bot: get a short-lived, read-only token for aws-flow-registry-demo
+      - name: Get token from GitHub App
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: mermeydan
+          repositories: aws-flow-registry-demo
+
+      # 3) Read flow-registry with the bot's token -> expected to succeed
+      - name: Read flow-registry with GitHub App token
+        uses: actions/checkout@v4
+        with:
+          repository: mermeydan/aws-flow-registry-demo
+          token: ${{ steps.app-token.outputs.token }}
+          path: registry
+
+      - name: Show approved flows
+        run: cat registry/flows/*.yaml
